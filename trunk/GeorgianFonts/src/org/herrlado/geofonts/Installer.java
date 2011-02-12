@@ -30,12 +30,11 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ProgressBar;
-import android.widget.Toast;
 
 public class Installer extends Activity implements OnClickListener,
 DialogInterface.OnClickListener {
 
-	public static final String TAG = "GeorgianFontsInstaller";
+	public static final String TAG = "GeoFontsInstaller";
 
 	public static final String DroidSansBold = "DroidSans-Bold.ttf";
 
@@ -87,7 +86,7 @@ DialogInterface.OnClickListener {
 				IOUtils.copy(fis, fos);
 			}
 		} catch (Exception ex) {
-			makeToast(ex.getMessage());
+			notifyUser("INFO", ex.getMessage());
 			return false;
 		} finally {
 			IOUtils.closeQuietly(fis);
@@ -97,9 +96,18 @@ DialogInterface.OnClickListener {
 		Log.d(TAG, "Fonts were copied into the " + backupFolder);
 		return true;
 	}
-
-	private void makeToast(String text) {
-		Toast.makeText(this, text, Toast.LENGTH_LONG).show();
+	
+	private void alertUser(String title, String text, int icon){
+		AlertDialog.Builder alert = new AlertDialog.Builder(this);
+		alert.setMessage(text)
+		.setCancelable(false)
+		.setTitle("        " + title)
+		.setIcon(icon)
+		.setPositiveButton("OK", this).show();
+	}
+	
+	private void notifyUser(String title, String message){
+		alertUser(title, message, android.R.drawable.ic_dialog_info);
 	}
 
 	public boolean restore() {
@@ -257,10 +265,9 @@ DialogInterface.OnClickListener {
 
 		ShellCommand shc = new ShellCommand();
 		if (shc.canSU(true) == false) {
-			Toast.makeText(
-					this,
+			alertUser("WARNING",
 					"This app cannot gain Super User permissions. Is your device rooted?",
-					Toast.LENGTH_LONG).show();
+					android.R.drawable.ic_dialog_alert);
 			return;
 		}
 
@@ -276,13 +283,9 @@ DialogInterface.OnClickListener {
 		if (v.getId() == R.id.uninstall_this_app) {
 			uninstallThis();
 		} else if (v.getId() == R.id.install_fonts) {
-			final AlertDialog.Builder b = new AlertDialog.Builder(this);
-			b.setIcon(android.R.drawable.ic_dialog_alert);
-			b.setTitle("!!!Warning!!!");
-			b.setMessage("This app now mounts /system partions rw and replaces Droid*.ttf fonts in /system/fonts/");
-			b.setPositiveButton(android.R.string.yes, this);
-			b.setNegativeButton(android.R.string.cancel, this);
-			b.show();
+			alertUser("WARNING",
+					"This app now mounts /system partions rw and replaces Droid*.ttf fonts in /system/fonts/",
+					android.R.drawable.ic_dialog_alert);
 		}
 	}
 
@@ -314,6 +317,7 @@ DialogInterface.OnClickListener {
 	private void Reboot(){
 		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setTitle("Installation Sucsessful");
+		builder.setIcon(android.R.drawable.ic_dialog_info);
 		builder.setMessage("Reboot the device for changes to take effect! reboot now?");
 		builder.setCancelable(false);
 		builder.setPositiveButton("yes", new DialogInterface.OnClickListener() {
@@ -335,7 +339,7 @@ DialogInterface.OnClickListener {
 	}
 
 	@Override
-	public void onClick(final DialogInterface dialog, int which) {
+	public void onClick(DialogInterface dialog, int which) {
 		if (DialogInterface.BUTTON_POSITIVE == which) {
 			new AsyncTask<Void, Void, Boolean>() {
 				@Override
@@ -359,10 +363,11 @@ DialogInterface.OnClickListener {
 				protected void onPostExecute(Boolean result) {
 					Installer.this.enableView();
 					if (result) {
-						//makeToast("Enjoy Georgian on your device!\nDon't forget to reboot your device!");	
 						Reboot();
 					} else {
-						makeToast("The fonts were not installed. Please check the logs and contact the developer :(");
+						alertUser("WARNING",
+								"The fonts were not installed. Please check the logs and contact the developer :(",
+								android.R.drawable.ic_dialog_alert);
 					}
 					super.onPostExecute(result);
 				}
