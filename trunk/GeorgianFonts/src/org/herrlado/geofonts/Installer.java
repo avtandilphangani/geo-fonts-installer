@@ -86,7 +86,7 @@ DialogInterface.OnClickListener {
 				IOUtils.copy(fis, fos);
 			}
 		} catch (Exception ex) {
-			notifyUser("INFO", ex.getMessage());
+			notifyUser(ex.getMessage());
 			return false;
 		} finally {
 			IOUtils.closeQuietly(fis);
@@ -97,17 +97,17 @@ DialogInterface.OnClickListener {
 		return true;
 	}
 	
-	private void alertUser(String title, String text, int icon){
+	private void alertUser(String title, String text, int icon, DialogInterface.OnClickListener listener){
 		AlertDialog.Builder alert = new AlertDialog.Builder(this);
 		alert.setMessage(text)
 		.setCancelable(false)
 		.setTitle("        " + title)
 		.setIcon(icon)
-		.setPositiveButton("OK", this).show();
+		.setPositiveButton("OK", listener).show();
 	}
 	
-	private void notifyUser(String title, String message){
-		alertUser(title, message, android.R.drawable.ic_dialog_info);
+	private void notifyUser(String message){
+		alertUser("INFO", message, android.R.drawable.ic_dialog_info, null);
 	}
 
 	public boolean restore() {
@@ -267,7 +267,7 @@ DialogInterface.OnClickListener {
 		if (shc.canSU(true) == false) {
 			alertUser("WARNING",
 					"This app cannot gain Super User permissions. Is your device rooted?",
-					android.R.drawable.ic_dialog_alert);
+					android.R.drawable.ic_dialog_alert, null);
 			return;
 		}
 
@@ -285,7 +285,7 @@ DialogInterface.OnClickListener {
 		} else if (v.getId() == R.id.install_fonts) {
 			alertUser("WARNING",
 					"This app now mounts /system partions rw and replaces Droid*.ttf fonts in /system/fonts/",
-					android.R.drawable.ic_dialog_alert);
+					android.R.drawable.ic_dialog_alert, this);
 		}
 	}
 
@@ -314,7 +314,7 @@ DialogInterface.OnClickListener {
 		pb.setVisibility(View.VISIBLE);
 	}
 
-	private void Reboot(){
+	private void reboot(){
 		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setTitle("Installation Sucsessful");
 		builder.setIcon(android.R.drawable.ic_dialog_info);
@@ -339,7 +339,7 @@ DialogInterface.OnClickListener {
 	}
 
 	@Override
-	public void onClick(DialogInterface dialog, int which) {
+	public void onClick(final DialogInterface dialog, int which) {
 		if (DialogInterface.BUTTON_POSITIVE == which) {
 			new AsyncTask<Void, Void, Boolean>() {
 				@Override
@@ -363,11 +363,11 @@ DialogInterface.OnClickListener {
 				protected void onPostExecute(Boolean result) {
 					Installer.this.enableView();
 					if (result) {
-						Reboot();
+						reboot();
 					} else {
 						alertUser("WARNING",
 								"The fonts were not installed. Please check the logs and contact the developer :(",
-								android.R.drawable.ic_dialog_alert);
+								android.R.drawable.ic_dialog_alert, null);
 					}
 					super.onPostExecute(result);
 				}
