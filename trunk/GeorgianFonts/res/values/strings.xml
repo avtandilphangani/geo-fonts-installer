@@ -14,5 +14,7 @@
 	<string name="sendlog_install">Install SendLog</string>
 	<string name="sendlog_install_hint">Install the free SendLog application to collect the device log and send it to the developer.</string>
     <string name="debug">Debug</string>
-    
+    <string name="alert_info">INFO</string>
+    <string name="alert_warn">WARNING</string>
+    <string name="alert_ok">OK</string>
 </resources>
