@@ -46,6 +46,7 @@ DialogInterface.OnClickListener {
 	public static final String DESTINATION = "/system/fonts";
 	public static final Pattern MOUNT_SYSTEM_PATTERN = Pattern
 	.compile("([^\\s]*)\\s.*(/system)\\s.*");
+	private ShellCommand sc = new ShellCommand();
 
 	static {
 		MD5.put(DroidSansBold, "bd3163f7db07b82158a310efd77902ce");
@@ -74,14 +75,33 @@ DialogInterface.OnClickListener {
 		return Environment.getExternalStorageDirectory() + "/"
 		+ getApplicationContext().getPackageName();
 	}
-	
+
 	private String getTmpFontFolder() {
 		return getBackupFolder() + "/tmp";
 	}
-	
-	public boolean restore() {
 
-		return false;
+	private void restore() {
+		remountRW();
+		File backupFolder = new File(getBackupFolder());			
+		if(!backupFolder.isDirectory() ||
+				!backupFolder.canWrite()){
+			Log.w(TAG,
+					backupFolder
+					+ " either does not exist or is not a directory or not writable!");
+		}
+
+		try{
+			for(String font : MD5.keySet()){
+				String source = backupFolder + font;
+				String dest = DESTINATION + "/" + font;
+				sc.su.run("cat " + source + " > " + dest);
+				sc.su.run("chmod 644  " + dest);
+			}		
+		}catch (Exception ex) {
+			notifyUser(ex.getMessage());
+		}
+		notifyUser("Fonts restored!");
+		remountRO();
 	}
 
 	private String getSystemPartion() {
@@ -107,12 +127,6 @@ DialogInterface.OnClickListener {
 		return null;
 	}
 
-	private static void check(CommandResult runWaitFor) throws Exception {
-		if (runWaitFor.success() == false) {
-			throw new Exception(runWaitFor.stderr);
-		}
-	}
-
 	private void uninstallThis() {
 		Uri uri = Uri.fromParts("package", getApplication().getPackageName(),
 				null);
@@ -127,7 +141,6 @@ DialogInterface.OnClickListener {
 	}
 
 	private void reboot(){
-		ShellCommand sc = new ShellCommand();
 		sc.su.run("su");
 		sc.su.run("reboot");
 	}
@@ -165,7 +178,7 @@ DialogInterface.OnClickListener {
 		Log.d(TAG, "Fonts were copied into the " + backupFolder);
 		return true;
 	}
-	
+
 	public boolean extractFonts() {
 		String folder = getTmpFontFolder() + "/";
 		new File(folder).mkdir();
@@ -175,22 +188,33 @@ DialogInterface.OnClickListener {
 			for (String key : MD5.keySet()) {
 				is = getApplicationContext().getAssets().open(key);
 				os = new FileOutputStream(new File(folder + key));
-				IOUtils.copy(is, os);
-				IOUtils.closeQuietly(is);
-				IOUtils.closeQuietly(os);
+				IOUtils.copy(is, os);			
 			}
 		} catch (Exception ex) {
 			Log.w(TAG, "Cannot extract Fonts to " + getTmpFontFolder(), ex);
+
+			return false;
+		} finally {
 			IOUtils.closeQuietly(is);
 			IOUtils.closeQuietly(os);
-			return false;
 		}
 		return true;
 	}
 
+	private void remountRW(){
+		sc.su.run("remount rw");
+	}
+
+	private void remountRO(){
+		try{
+			sc.su.run("remount ro");
+		}	catch (Exception ex) {
+			Log.w(TAG, "Cannot mount /system ro :(", ex);
+		}	
+	}
+
 	public boolean installFonts() {
 		StringBuilder sb = new StringBuilder();
-		String system = null;
 		try {
 			ShellCommand sc = new ShellCommand();
 
@@ -199,42 +223,23 @@ DialogInterface.OnClickListener {
 				return false;
 			}
 
-			system = getSystemPartion();
-
-			if (system == null) {
+			if (getSystemPartion() == null) {
 				Log.w(TAG,
 				"Cannot find out which partion is mounted on /system");
 				return false;
 			}
 
-			String cc = "mount -o remount, rw" + system + " /system";
-			sb.append(cc).append("\n");
-
-			check(sc.su.runWaitFor(cc));
+			remountRW();
 
 			String sourceFolder = getTmpFontFolder();
 			for (String key : MD5.keySet()) {
 				String source = sourceFolder + "/" + key;
 				String dest = DESTINATION + "/" + key;
-				cc = "cat " + source + " > " + dest;
-				sb.append(cc).append("\n");
-				check(sc.su.runWaitFor(cc));
-
-				cc = "chmod 644  " + dest;
-				sb.append(cc).append("\n");
-				check(sc.su.runWaitFor(cc));
-
-				cc = "rm " + source;
-				sb.append(cc).append("\n");
-				check(sc.su.runWaitFor(cc));
+				sc.su.run("cat " + source + " > " + dest);
+				sc.su.run("chmod 644  " + dest);
+				sc.su.run("rm " + source);
 			}
-			try {
-				cc = "mount -o remount,ro " + system + " /system";
-				sb.append(cc).append("\n");
-				check(sc.su.runWaitFor(cc));
-			} catch (Exception ex) {
-				Log.w(TAG, "Can not mount /system ro :(", ex);
-			}
+			remountRO();
 			return true;
 
 		} catch (Exception ex) {
@@ -258,8 +263,7 @@ DialogInterface.OnClickListener {
 		Button button = (Button) findViewById(R.id.uninstall_this_app);
 		button.setOnClickListener(this);
 
-		ShellCommand shc = new ShellCommand();
-		if (shc.canSU(true) == false) {
+		if (sc.canSU(true) == false) {
 			new AlertDialog.Builder(this)
 			.setTitle(R.string.alert_warn)
 			.setMessage("This app cannot gain Super User permissions. Is your device rooted?")
@@ -273,15 +277,21 @@ DialogInterface.OnClickListener {
 					getPage();
 				}
 			}).show();
-			//			alertUser(R.string.alert_warn,
-			//					"This app cannot gain Super User permissions. Is your device rooted?",
-			//					android.R.drawable.ic_dialog_alert, null);
 			return;
 		}
 
 		button = (Button) findViewById(R.id.install_fonts);
 		button.setVisibility(View.VISIBLE);
 		button.setEnabled(true);
+		button.setOnClickListener(this);
+
+		button = (Button) findViewById(R.id.restore_fonts);
+		button.setVisibility(View.VISIBLE);
+		if(new File(getBackupFolder()).exists()){
+			button.setEnabled(true);
+		}else{
+			button.setEnabled(false);
+		}
 		button.setOnClickListener(this);
 
 	}
@@ -293,7 +303,9 @@ DialogInterface.OnClickListener {
 		} else if (v.getId() == R.id.install_fonts) {
 			alertUser(R.string.alert_warn,
 					android.R.drawable.ic_dialog_alert, this,
-					"This app now mounts /system partions rw and replaces Droid*.ttf fonts in /system/fonts/");
+			"This app now mounts /system partions rw and replaces Droid*.ttf fonts in /system/fonts/");
+		} else if(v.getId() == R.id.restore_fonts){
+			restore();
 		}
 	}
 
@@ -304,6 +316,10 @@ DialogInterface.OnClickListener {
 		button.setEnabled(true);
 		ProgressBar pb = (ProgressBar) findViewById(R.id.installing);
 		pb.setVisibility(View.INVISIBLE);
+		button = (Button) findViewById(R.id.restore_fonts);
+		if(backup()){
+			button.setEnabled(true);
+		}
 	}
 
 	public void disableView() {
@@ -362,7 +378,7 @@ DialogInterface.OnClickListener {
 					} else {
 						alertUser(R.string.alert_warn,
 								android.R.drawable.ic_dialog_alert, null,
-								"The fonts were not installed. Please check the logs and contact the developer :(");
+						"The fonts were not installed. Please check the logs and contact the developer :(");
 					}
 					super.onPostExecute(result);
 				}
