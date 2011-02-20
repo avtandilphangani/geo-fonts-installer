@@ -46,7 +46,6 @@ DialogInterface.OnClickListener {
 	public static final String DESTINATION = "/system/fonts";
 	public static final Pattern MOUNT_SYSTEM_PATTERN = Pattern
 	.compile("([^\\s]*)\\s.*(/system)\\s.*");
-	private ShellCommand sc; 
 
 	static {
 		MD5.put(DroidSansBold, "bd3163f7db07b82158a310efd77902ce");
@@ -80,28 +79,46 @@ DialogInterface.OnClickListener {
 		return getBackupFolder() + "/tmp";
 	}
 
-	private void restore() {
-		remountRW();
-		File backupFolder = new File(getBackupFolder());			
-		if(!backupFolder.isDirectory() ||
-				!backupFolder.canWrite()){
-			Log.w(TAG,
-					backupFolder
-					+ " either does not exist or is not a directory or not writable!");
-		}
-
+	public boolean restore() {
+		StringBuilder sb = new StringBuilder();
+		String system = null;
+		File backUp = new File(getBackupFolder());
 		try{
+			ShellCommand sc = new ShellCommand();
+			system = getSystemPartion();
+
+			if(!backUp.isDirectory()){
+				Log.w(TAG, "backUp is not a directory");
+				return false;
+			}
+
+			String cc = "mount -o remount, rw" + system + " /system";
+			sb.append(cc).append("\n");
+
+			check(sc.su.runWaitFor(cc));
+
 			for(String font : MD5.keySet()){
-				String source = backupFolder + font;
+				String source = getBackupFolder() + "/" + font;
 				String dest = DESTINATION + "/" + font;
-				sc.su.run("cat " + source + " > " + dest);
-				sc.su.run("chmod 644  " + dest);
-			}		
-		}catch (Exception ex) {
-			notifyUser(ex.getMessage());
+				cc = "cat " + source + " > " + dest;
+				sb.append(cc).append("\n");
+				check(sc.su.runWaitFor(cc));
+
+				cc = "chmod 644  " + dest;
+				sb.append(cc).append("\n");
+				check(sc.su.runWaitFor(cc));
+			}
+			try {
+				cc = "mount -o remount,ro " + system + " /system";
+				sb.append(cc).append("\n");
+				check(sc.su.runWaitFor(cc));
+			} catch (Exception ex) {
+				Log.w(TAG, "Cannot mount /system ro :(", ex);
+			}
+		}catch (Exception e) {
+			notifyUser(e.getMessage());
 		}
-		notifyUser("Fonts restored!");
-		remountRO();
+		return true;
 	}
 
 	private String getSystemPartion() {
@@ -127,6 +144,12 @@ DialogInterface.OnClickListener {
 		return null;
 	}
 
+	private static void check(CommandResult runWaitFor) throws Exception {
+		if (runWaitFor.success() == false) {
+			throw new Exception(runWaitFor.stderr);
+		}
+	}
+
 	private void uninstallThis() {
 		Uri uri = Uri.fromParts("package", getApplication().getPackageName(),
 				null);
@@ -141,6 +164,7 @@ DialogInterface.OnClickListener {
 	}
 
 	private void reboot(){
+		ShellCommand sc = new ShellCommand();
 		sc.su.run("su");
 		sc.su.run("reboot");
 	}
@@ -149,7 +173,7 @@ DialogInterface.OnClickListener {
 		return this;
 	}
 
-	private boolean backup() {
+	public boolean backup() {
 		File backupFolder = new File(getBackupFolder());
 		backupFolder.mkdir();
 		if (backupFolder.isDirectory() == false
@@ -179,7 +203,7 @@ DialogInterface.OnClickListener {
 		return true;
 	}
 
-	private boolean extractFonts() {
+	public boolean extractFonts() {
 		String folder = getTmpFontFolder() + "/";
 		new File(folder).mkdir();
 		InputStream is = null;
@@ -188,45 +212,22 @@ DialogInterface.OnClickListener {
 			for (String key : MD5.keySet()) {
 				is = getApplicationContext().getAssets().open(key);
 				os = new FileOutputStream(new File(folder + key));
-				IOUtils.copy(is, os);			
+				IOUtils.copy(is, os);
+				IOUtils.closeQuietly(is);
+				IOUtils.closeQuietly(os);
 			}
 		} catch (Exception ex) {
 			Log.w(TAG, "Cannot extract Fonts to " + getTmpFontFolder(), ex);
-
-			return false;
-		} finally {
 			IOUtils.closeQuietly(is);
 			IOUtils.closeQuietly(os);
+			return false;
 		}
 		return true;
 	}
 
-	private void remountRW(){
-		String system = getSystemPartion();
-		try {
-			check(sc.su.runWaitFor("mount -o remount, rw " + system + "/system\n"));
-		} catch (Exception e) {
-			Log.w(TAG, e.getMessage());
-		}
-	}
-
-	private void remountRO(){
-		String system = getSystemPartion();
-		try {
-			check(sc.su.runWaitFor("mount -o remount, ro " + system + "/system\n"));
-		} catch (Exception ex) {
-			Log.w(TAG, "Cannot mount /system ro :(" + ex.getMessage());
-		}	
-	}
-
-	private static void check(CommandResult runWaitFor) throws Exception {
-		if (runWaitFor.success() == false) {
-			throw new Exception(runWaitFor.stderr);
-		}
-	}
-
 	public boolean installFonts() {
 		StringBuilder sb = new StringBuilder();
+		String system = null;
 		try {
 			ShellCommand sc = new ShellCommand();
 
@@ -235,23 +236,42 @@ DialogInterface.OnClickListener {
 				return false;
 			}
 
-			if (getSystemPartion() == null) {
+			system = getSystemPartion();
+
+			if (system == null) {
 				Log.w(TAG,
 				"Cannot find out which partion is mounted on /system");
 				return false;
 			}
 
-			remountRW();
+			String cc = "mount -o remount, rw" + system + " /system";
+			sb.append(cc).append("\n");
+
+			check(sc.su.runWaitFor(cc));
 
 			String sourceFolder = getTmpFontFolder();
 			for (String key : MD5.keySet()) {
 				String source = sourceFolder + "/" + key;
 				String dest = DESTINATION + "/" + key;
-				sc.su.run("cat " + source + " > " + dest);
-				sc.su.run("chmod 644  " + dest);
-				sc.su.run("rm " + source);
+				cc = "cat " + source + " > " + dest;
+				sb.append(cc).append("\n");
+				check(sc.su.runWaitFor(cc));
+
+				cc = "chmod 644  " + dest;
+				sb.append(cc).append("\n");
+				check(sc.su.runWaitFor(cc));
+
+				cc = "rm " + source;
+				sb.append(cc).append("\n");
+				check(sc.su.runWaitFor(cc));
 			}
-			remountRO();
+			try {
+				cc = "mount -o remount,ro " + system + " /system";
+				sb.append(cc).append("\n");
+				check(sc.su.runWaitFor(cc));
+			} catch (Exception ex) {
+				Log.w(TAG, "Cannot mount /system ro :(", ex);
+			}
 			return true;
 
 		} catch (Exception ex) {
@@ -272,11 +292,11 @@ DialogInterface.OnClickListener {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.georgian_installed);
 
-		sc = new ShellCommand();
 		Button button = (Button) findViewById(R.id.uninstall_this_app);
 		button.setOnClickListener(this);
 
-		if (sc.canSU(true) == false) {
+		ShellCommand shc = new ShellCommand();
+		if (shc.canSU(true) == false) {
 			new AlertDialog.Builder(this)
 			.setTitle(R.string.alert_warn)
 			.setMessage("This app cannot gain Super User permissions. Is your device rooted?")
@@ -290,6 +310,9 @@ DialogInterface.OnClickListener {
 					getPage();
 				}
 			}).show();
+			//                      alertUser(R.string.alert_warn,
+			//                                      "This app cannot gain Super User permissions. Is your device rooted?",
+			//                                      android.R.drawable.ic_dialog_alert, null);
 			return;
 		}
 
@@ -317,8 +340,10 @@ DialogInterface.OnClickListener {
 			alertUser(R.string.alert_warn,
 					android.R.drawable.ic_dialog_alert, this,
 			"This app now mounts /system partions rw and replaces Droid*.ttf fonts in /system/fonts/");
-		} else if(v.getId() == R.id.restore_fonts){
-			restore();
+		}else if(v.getId() == R.id.restore_fonts){
+			if(restore()){
+				notifyUser("Fonts restored");
+			}
 		}
 	}
 
@@ -385,7 +410,7 @@ DialogInterface.OnClickListener {
 
 							@Override
 							public void onClick(DialogInterface dialog, int id) {
-								dialog.cancel();								
+								dialog.cancel();                                                                
 							}
 						}).show();
 					} else {
@@ -407,6 +432,7 @@ DialogInterface.OnClickListener {
 	}
 
 	@Override
+
 	public final boolean onOptionsItemSelected(final MenuItem item) {
 		switch (item.getItemId()) {
 		case R.id.send_logs: // start settings activity
