@@ -92,7 +92,7 @@ DialogInterface.OnClickListener {
 				return false;
 			}
 
-			String cc = "mount -o remount, rw" + system + " /system";
+			String cc = "mount -o remount,rw " + system + " /system";
 			sb.append(cc).append("\n");
 
 			check(sc.su.runWaitFor(cc));
@@ -108,15 +108,23 @@ DialogInterface.OnClickListener {
 				sb.append(cc).append("\n");
 				check(sc.su.runWaitFor(cc));
 			}
+
+			cc = "rm -r " + getBackupFolder();
+			sb.append(cc).append("\n");
+			check(sc.su.runWaitFor(cc));
+
 			try {
 				cc = "mount -o remount,ro " + system + " /system";
 				sb.append(cc).append("\n");
 				check(sc.su.runWaitFor(cc));
 			} catch (Exception ex) {
 				Log.w(TAG, "Cannot mount /system ro :(", ex);
+				return false;
 			}
+
 		}catch (Exception e) {
-			notifyUser(e.getMessage());
+			Log.w(TAG, e.getMessage());
+			return false;
 		}
 		return true;
 	}
@@ -244,7 +252,7 @@ DialogInterface.OnClickListener {
 				return false;
 			}
 
-			String cc = "mount -o remount, rw" + system + " /system";
+			String cc = "mount -o remount,rw " + system + " /system";
 			sb.append(cc).append("\n");
 
 			check(sc.su.runWaitFor(cc));
@@ -272,18 +280,16 @@ DialogInterface.OnClickListener {
 			} catch (Exception ex) {
 				Log.w(TAG, "Cannot mount /system ro :(", ex);
 			}
-			return true;
 
 		} catch (Exception ex) {
-			Log.w(TAG, "Cannot install Georgian fonts. Please check the logs",
-					ex);
+			Log.w(TAG, "Cannot install Georgian fonts. Please check the logs", ex);
 			return false;
 		} finally {
 			String command = sb.toString();
 			Log.i(TAG, "run commands >>>>");
 			Log.i(TAG, command);
-
 		}
+		return true;
 	}
 
 	/** Called when the activity is first created. */
@@ -310,9 +316,6 @@ DialogInterface.OnClickListener {
 					getPage();
 				}
 			}).show();
-			//                      alertUser(R.string.alert_warn,
-			//                                      "This app cannot gain Super User permissions. Is your device rooted?",
-			//                                      android.R.drawable.ic_dialog_alert, null);
 			return;
 		}
 
@@ -329,7 +332,6 @@ DialogInterface.OnClickListener {
 			button.setEnabled(false);
 		}
 		button.setOnClickListener(this);
-
 	}
 
 	@Override
@@ -341,9 +343,30 @@ DialogInterface.OnClickListener {
 					android.R.drawable.ic_dialog_alert, this,
 			"This app now mounts /system partions rw and replaces Droid*.ttf fonts in /system/fonts/");
 		}else if(v.getId() == R.id.restore_fonts){
-			if(restore()){
-				notifyUser("Fonts restored");
-			}
+			new AsyncTask<Void, Void, Boolean>(){
+				@Override
+				protected Boolean doInBackground(Void... params){
+					return restore();
+				}
+
+				@Override
+				protected void onPreExecute() {
+					super.onPreExecute();
+					Installer.this.disableView();
+				}
+
+				@Override
+				protected void onPostExecute(Boolean result){
+					Installer.this.enableView();
+					if(result){
+						notifyUser("Fonts restored");
+					}else{
+						notifyUser("Not Restored");
+					}
+					super.onPostExecute(result);
+				}
+			}.execute();
+
 		}
 	}
 
@@ -352,18 +375,20 @@ DialogInterface.OnClickListener {
 		button.setEnabled(true);
 		button = (Button) findViewById(R.id.install_fonts);
 		button.setEnabled(true);
-		ProgressBar pb = (ProgressBar) findViewById(R.id.installing);
-		pb.setVisibility(View.INVISIBLE);
 		button = (Button) findViewById(R.id.restore_fonts);
 		if(backup()){
 			button.setEnabled(true);
 		}
+		ProgressBar pb = (ProgressBar) findViewById(R.id.installing);
+		pb.setVisibility(View.INVISIBLE);	
 	}
 
 	public void disableView() {
 		Button button = (Button) findViewById(R.id.uninstall_this_app);
 		button.setEnabled(false);
 		button = (Button) findViewById(R.id.install_fonts);
+		button.setEnabled(false);
+		button = (Button) findViewById(R.id.restore_fonts);
 		button.setEnabled(false);
 		ProgressBar pb = (ProgressBar) findViewById(R.id.installing);
 		pb.setVisibility(View.VISIBLE);
