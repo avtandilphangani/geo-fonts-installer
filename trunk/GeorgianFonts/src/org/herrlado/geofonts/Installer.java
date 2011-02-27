@@ -79,7 +79,7 @@ DialogInterface.OnClickListener {
 		return getBackupFolder() + "/tmp";
 	}
 
-	public boolean restore() {
+	private boolean restore() {
 		StringBuilder sb = new StringBuilder();
 		String system = null;
 		File backUp = new File(getBackupFolder());
@@ -171,17 +171,16 @@ DialogInterface.OnClickListener {
 		startActivity(launchBrowser);
 	}
 
-	private void reboot(){
-		ShellCommand sc = new ShellCommand();
-		sc.su.run("su");
-		sc.su.run("reboot");
+	private boolean SDpresent(){
+		return 
+		Environment.getExternalStorageState()
+		.equals(Environment.MEDIA_MOUNTED);
 	}
 
-	private Installer inst(){
-		return this;
-	}
-
-	public boolean backup() {
+	public boolean backup() throws Exception {
+		if(SDpresent() == false){
+			throw new Exception("sdcard is not present or not mounted");
+		}
 		File backupFolder = new File(getBackupFolder());
 		backupFolder.mkdir();
 		if (backupFolder.isDirectory() == false
@@ -198,10 +197,7 @@ DialogInterface.OnClickListener {
 				fis = new FileInputStream(new File("/system/fonts/" + font));
 				fos = new FileOutputStream(new File(backupFolder + "/" + font));
 				IOUtils.copy(fis, fos);
-			}
-		} catch (Exception ex) {
-			notifyUser(ex.getMessage());
-			return false;
+			} 
 		} finally {
 			IOUtils.closeQuietly(fis);
 			IOUtils.closeQuietly(fos);
@@ -359,9 +355,9 @@ DialogInterface.OnClickListener {
 				protected void onPostExecute(Boolean result){
 					Installer.this.enableView();
 					if(result){
-						notifyUser("Fonts restored");
+						notifyUser("Original Fonts Restored");
 					}else{
-						notifyUser("Not Restored");
+						notifyUser("Could Not Restore Fonts");
 					}
 					super.onPostExecute(result);
 				}
@@ -376,8 +372,15 @@ DialogInterface.OnClickListener {
 		button = (Button) findViewById(R.id.install_fonts);
 		button.setEnabled(true);
 		button = (Button) findViewById(R.id.restore_fonts);
-		if(backup()){
-			button.setEnabled(true);
+		try {
+			if(backup()){
+				button.setEnabled(true);
+			}
+		} catch (Exception e) {
+			alertUser(R.string.alert_warn,
+					android.R.drawable.ic_dialog_alert, 
+					null,
+					e.getMessage());
 		}
 		ProgressBar pb = (ProgressBar) findViewById(R.id.installing);
 		pb.setVisibility(View.INVISIBLE);	
@@ -401,11 +404,15 @@ DialogInterface.OnClickListener {
 				@Override
 				protected Boolean doInBackground(Void... params) {
 
-					if (backup() == false) {
-						Log.w(TAG, "Cannot backup fonts. Please check logs");
-						return false;
+					try {
+						if (backup() == false) {
+							Log.w(TAG, "Cannot backup fonts. Please check logs");
+							return false;
+						}
+					} catch (Exception e) {		
+						Log.w(TAG, "sdcard is not present or not mounted");
+						this.cancel(true);
 					}
-
 					return installFonts();
 				}
 
@@ -418,29 +425,16 @@ DialogInterface.OnClickListener {
 				@Override
 				protected void onPostExecute(Boolean result) {
 					Installer.this.enableView();
+					if(this.isCancelled()){
+						return;
+					}
 					if (result) {
-						new AlertDialog.Builder(inst())
-						.setTitle("Installation Sucsessful")
-						.setIcon(android.R.drawable.ic_dialog_info)
-						.setMessage("Reboot the device for changes to take effect! reboot now?")
-						.setCancelable(false)
-						.setPositiveButton(R.string.alert_ok, new DialogInterface.OnClickListener() {
-
-							@Override
-							public void onClick(DialogInterface dialog, int id) {
-								reboot();
-							}
-						})
-						.setNegativeButton(R.string.alert_cancel, new DialogInterface.OnClickListener() {
-
-							@Override
-							public void onClick(DialogInterface dialog, int id) {
-								dialog.cancel();                                                                
-							}
-						}).show();
+						notifyUser("Installation Sucsessful\n" +
+						"Reboot the device for changes to take effect!");
 					} else {
 						alertUser(R.string.alert_warn,
-								android.R.drawable.ic_dialog_alert, null,
+								android.R.drawable.ic_dialog_alert, 
+								null,
 						"The fonts were not installed. Please check the logs and contact the developer :(");
 					}
 					super.onPostExecute(result);
