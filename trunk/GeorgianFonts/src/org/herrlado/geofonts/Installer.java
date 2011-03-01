@@ -177,10 +177,7 @@ DialogInterface.OnClickListener {
 		.equals(Environment.MEDIA_MOUNTED);
 	}
 
-	public boolean backup() throws Exception {
-		if(SDpresent() == false){
-			throw new Exception("sdcard is not present or not mounted");
-		}
+	public boolean backup() {
 		File backupFolder = new File(getBackupFolder());
 		backupFolder.mkdir();
 		if (backupFolder.isDirectory() == false
@@ -198,6 +195,9 @@ DialogInterface.OnClickListener {
 				fos = new FileOutputStream(new File(backupFolder + "/" + font));
 				IOUtils.copy(fis, fos);
 			} 
+		} catch (Exception ex) {
+			notifyUser(ex.getMessage());
+			return false;
 		} finally {
 			IOUtils.closeQuietly(fis);
 			IOUtils.closeQuietly(fos);
@@ -314,20 +314,26 @@ DialogInterface.OnClickListener {
 			}).show();
 			return;
 		}
-
-		button = (Button) findViewById(R.id.install_fonts);
-		button.setVisibility(View.VISIBLE);
-		button.setEnabled(true);
-		button.setOnClickListener(this);
-
-		button = (Button) findViewById(R.id.restore_fonts);
-		button.setVisibility(View.VISIBLE);
-		if(new File(getBackupFolder()).exists()){
+		if(SDpresent()){
+			button = (Button) findViewById(R.id.install_fonts);
+			button.setVisibility(View.VISIBLE);
 			button.setEnabled(true);
+			button.setOnClickListener(this);
+
+			button = (Button) findViewById(R.id.restore_fonts);
+			button.setVisibility(View.VISIBLE);
+			if(new File(getBackupFolder()).exists()){
+				button.setEnabled(true);
+			}else{
+				button.setEnabled(false);
+			}
+			button.setOnClickListener(this);
 		}else{
-			button.setEnabled(false);
+			alertUser(R.string.alert_warn,
+					android.R.drawable.ic_dialog_alert, 
+					null,
+					"sdcard is not present or not mounted");			
 		}
-		button.setOnClickListener(this);
 	}
 
 	@Override
@@ -404,14 +410,9 @@ DialogInterface.OnClickListener {
 				@Override
 				protected Boolean doInBackground(Void... params) {
 
-					try {
-						if (backup() == false) {
-							Log.w(TAG, "Cannot backup fonts. Please check logs");
-							return false;
-						}
-					} catch (Exception e) {		
-						Log.w(TAG, "sdcard is not present or not mounted");
-						this.cancel(true);
+					if (backup() == false) {
+						Log.w(TAG, "Cannot backup fonts. Please check logs");
+						return false;
 					}
 					return installFonts();
 				}
