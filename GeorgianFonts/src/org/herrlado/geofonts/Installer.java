@@ -16,6 +16,8 @@ import org.herrlado.geofonts.ShellCommand.CommandResult;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
@@ -57,17 +59,22 @@ DialogInterface.OnClickListener {
 		MD5.put(DroidSerifRegular, "ad860d4a21a857bdee918d902829990a");
 	}
 
-	private void alertUser(int id, int icon, DialogInterface.OnClickListener listener, String text){
+	private void alertUser(String text, DialogInterface.OnClickListener listener){
 		new AlertDialog.Builder(this)
 		.setMessage(text)
 		.setCancelable(false)
-		.setTitle(id)
-		.setIcon(icon)
+		.setTitle(R.string.alert_warn)
+		.setIcon(android.R.drawable.ic_dialog_alert)
 		.setPositiveButton(R.string.alert_ok, listener).show();
 	}
 
-	private void notifyUser(String message){
-		alertUser(R.string.alert_info, android.R.drawable.ic_dialog_info, null, message);
+	private void notifyUser(String text){
+		new AlertDialog.Builder(this)
+		.setMessage(text)
+		.setCancelable(false)
+		.setTitle(R.string.alert_info)
+		.setIcon(android.R.drawable.ic_dialog_info)
+		.setPositiveButton(R.string.alert_ok, null).show();
 	}
 
 	private String getBackupFolder() {
@@ -169,6 +176,7 @@ DialogInterface.OnClickListener {
 		Uri url = Uri.parse("http://www.addictivetips.com/mobile/how-to-root-your-android-phone-device/");
 		Intent launchBrowser = new Intent(Intent.ACTION_VIEW, url);
 		startActivity(launchBrowser);
+
 	}
 
 	private boolean SDpresent(){
@@ -329,10 +337,7 @@ DialogInterface.OnClickListener {
 			}
 			button.setOnClickListener(this);
 		}else{
-			alertUser(R.string.alert_warn,
-					android.R.drawable.ic_dialog_alert, 
-					null,
-					"sdcard is not present or not mounted");			
+			alertUser("sdcard is not present or not mounted", null);		
 		}
 	}
 
@@ -341,9 +346,9 @@ DialogInterface.OnClickListener {
 		if (v.getId() == R.id.uninstall_this_app) {
 			uninstallThis();
 		} else if (v.getId() == R.id.install_fonts) {
-			alertUser(R.string.alert_warn,
-					android.R.drawable.ic_dialog_alert, this,
-			"This app now mounts /system partions rw and replaces Droid*.ttf fonts in /system/fonts/");
+			alertUser(
+					"This app now mounts /system partions rw and replaces Droid*.ttf fonts in /system/fonts/", 
+					this);
 		}else if(v.getId() == R.id.restore_fonts){
 			new AsyncTask<Void, Void, Boolean>(){
 				@Override
@@ -363,7 +368,7 @@ DialogInterface.OnClickListener {
 					if(result){
 						notifyUser("Original Fonts Restored");
 					}else{
-						notifyUser("Could Not Restore Fonts");
+						alertUser("Could Not Restore Fonts", null);
 					}
 					super.onPostExecute(result);
 				}
@@ -383,10 +388,7 @@ DialogInterface.OnClickListener {
 				button.setEnabled(true);
 			}
 		} catch (Exception e) {
-			alertUser(R.string.alert_warn,
-					android.R.drawable.ic_dialog_alert, 
-					null,
-					e.getMessage());
+			alertUser(e.getMessage(), null);
 		}
 		ProgressBar pb = (ProgressBar) findViewById(R.id.installing);
 		pb.setVisibility(View.INVISIBLE);	
@@ -433,10 +435,8 @@ DialogInterface.OnClickListener {
 						notifyUser("Installation Sucsessful\n" +
 						"Reboot the device for changes to take effect!");
 					} else {
-						alertUser(R.string.alert_warn,
-								android.R.drawable.ic_dialog_alert, 
-								null,
-						"The fonts were not installed. Please check the logs and contact the developer :(");
+						alertUser("The fonts were not installed. Please check the logs and contact the developer :(",
+								null);
 					}
 					super.onPostExecute(result);
 				}
@@ -463,4 +463,12 @@ DialogInterface.OnClickListener {
 		}
 	}
 
+	public class SDCardMountIntentReceiver extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context arg0, Intent arg1) {
+			// TODO Auto-generated method stub
+			Installer.this.enableView();
+		}		
+	}
 }
