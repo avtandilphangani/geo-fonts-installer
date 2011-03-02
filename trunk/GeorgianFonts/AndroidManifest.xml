@@ -12,12 +12,18 @@
             </intent-filter>
         </activity>
     	
+    	<!-- in this way we do not know Installer :( 
     	<receiver android:name=".SDCardMountIntentReceiver" android:enabled="true">
     	   <intent-filter>
     	    <action android:name="android.intent.action.MEDIA_MOUNTED" />
+    	    <data android:scheme="file" /> 
+    	   </intent-filter>
+    	   <intent-filter>
+    	    <action android:name="android.intent.action.MEDIA_UNMOUNTED" />
+    	    <data android:scheme="file" /> 
     	   </intent-filter> 
-    	 </receiver>
-
+       	 </receiver>
+		-->
     </application>
 	<uses-sdk android:minSdkVersion="3" android:targetSdkVersion="8"></uses-sdk>
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
