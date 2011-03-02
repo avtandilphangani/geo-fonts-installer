@@ -58,6 +58,8 @@ DialogInterface.OnClickListener {
 		MD5.put(DroidSerifItalic, "8dccfdce11daa12537fde6cd16dc5bf2");
 		MD5.put(DroidSerifRegular, "ad860d4a21a857bdee918d902829990a");
 	}
+	
+	private SDCardMountIntentReceiver sDCardMountIntentReceiver = null;
 
 	private void alertUser(String text, DialogInterface.OnClickListener listener){
 		new AlertDialog.Builder(this)
@@ -302,6 +304,11 @@ DialogInterface.OnClickListener {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.georgian_installed);
 
+		sDCardMountIntentReceiver  = new SDCardMountIntentReceiver(this);
+		
+		//TODO zura ak daaregistrire receiver
+		
+		
 		Button button = (Button) findViewById(R.id.uninstall_this_app);
 		button.setOnClickListener(this);
 
@@ -463,12 +470,8 @@ DialogInterface.OnClickListener {
 		}
 	}
 
-	public class SDCardMountIntentReceiver extends BroadcastReceiver {
-
-		@Override
-		public void onReceive(Context arg0, Intent arg1) {
-			// TODO Auto-generated method stub
-			Installer.this.enableView();
-		}		
+	public void onReceiveExternalStorageEvent(Intent intent) {
+		//check her if it is unmount or mount
+		
 	}
 }
