@@ -369,7 +369,7 @@ DialogInterface.OnClickListener {
 				@Override
 				protected void onPreExecute() {
 					super.onPreExecute();
-					Installer.this.disableView();
+					Installer.this.disableView(true);
 				}
 
 				@Override
@@ -404,16 +404,16 @@ DialogInterface.OnClickListener {
 		pb.setVisibility(View.INVISIBLE);	
 	}
 
-	public void disableView() {
+	public void disableView(boolean barView) {
 		Button button = (Button) findViewById(R.id.uninstall_this_app);
 		button.setEnabled(false);
 		button = (Button) findViewById(R.id.install_fonts);
 		button.setEnabled(false);
 		button = (Button) findViewById(R.id.restore_fonts);
 		button.setEnabled(false);
-		if(SDpresent()){
-		ProgressBar pb = (ProgressBar) findViewById(R.id.installing);
-		pb.setVisibility(View.VISIBLE);
+		if(barView){
+			ProgressBar pb = (ProgressBar) findViewById(R.id.installing);
+			pb.setVisibility(View.VISIBLE);
 		}
 	}
 
@@ -434,7 +434,7 @@ DialogInterface.OnClickListener {
 				@Override
 				protected void onPreExecute() {
 					super.onPreExecute();
-					Installer.this.disableView();
+					Installer.this.disableView(true);
 				}
 
 				@Override
@@ -486,7 +486,7 @@ DialogInterface.OnClickListener {
 			if(intent.getAction().equals(Intent.ACTION_MEDIA_MOUNTED)){
 				installer.enableView();
 			}else if(intent.getAction().equals(Intent.ACTION_MEDIA_UNMOUNTED)){
-				installer.disableView();
+				installer.disableView(false);
 				alertUser("sdcard has been removed or unmounted", null);
 			}
 		}
