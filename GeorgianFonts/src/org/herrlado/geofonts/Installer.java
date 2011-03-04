@@ -306,6 +306,7 @@ DialogInterface.OnClickListener {
 		setContentView(R.layout.georgian_installed);
 
 		IntentFilter filter = new IntentFilter(Intent.ACTION_MEDIA_MOUNTED);
+		filter.addAction(Intent.ACTION_MEDIA_UNMOUNTED);
 		filter.addDataScheme("file");
 		sDCardMountIntentReceiver  = new SDCardMountIntentReceiver(this);
 		registerReceiver(sDCardMountIntentReceiver, filter);
@@ -480,7 +481,11 @@ DialogInterface.OnClickListener {
 		}
 		@Override
 		public void onReceive(Context arg0, Intent intent) {
-			installer.enableView();
+			if(intent.getAction().equals(Intent.ACTION_MEDIA_MOUNTED)){
+				installer.enableView();
+			}else if(intent.getAction().equals(Intent.ACTION_MEDIA_UNMOUNTED)){
+				installer.disableView();
+			}
 		}
 	}
 }
