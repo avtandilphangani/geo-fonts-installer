@@ -411,8 +411,10 @@ DialogInterface.OnClickListener {
 		button.setEnabled(false);
 		button = (Button) findViewById(R.id.restore_fonts);
 		button.setEnabled(false);
+		if(SDpresent()){
 		ProgressBar pb = (ProgressBar) findViewById(R.id.installing);
 		pb.setVisibility(View.VISIBLE);
+		}
 	}
 
 	@Override
@@ -485,6 +487,7 @@ DialogInterface.OnClickListener {
 				installer.enableView();
 			}else if(intent.getAction().equals(Intent.ACTION_MEDIA_UNMOUNTED)){
 				installer.disableView();
+				alertUser("sdcard has been removed or unmounted", null);
 			}
 		}
 	}
