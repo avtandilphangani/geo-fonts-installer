@@ -20,7 +20,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -59,7 +58,7 @@ DialogInterface.OnClickListener {
 		MD5.put(DroidSerifItalic, "8dccfdce11daa12537fde6cd16dc5bf2");
 		MD5.put(DroidSerifRegular, "ad860d4a21a857bdee918d902829990a");
 	}
-
+	
 	private SDCardMountIntentReceiver sDCardMountIntentReceiver = null;
 
 	private void alertUser(String text, DialogInterface.OnClickListener listener){
@@ -305,11 +304,11 @@ DialogInterface.OnClickListener {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.georgian_installed);
 
-		IntentFilter filter = new IntentFilter(Intent.ACTION_MEDIA_MOUNTED);
-		filter.addDataScheme("file");
 		sDCardMountIntentReceiver  = new SDCardMountIntentReceiver(this);
-		registerReceiver(sDCardMountIntentReceiver, filter);
-
+		
+		//TODO zura ak daaregistrire receiver
+		
+		
 		Button button = (Button) findViewById(R.id.uninstall_this_app);
 		button.setOnClickListener(this);
 
@@ -345,8 +344,7 @@ DialogInterface.OnClickListener {
 			}
 			button.setOnClickListener(this);
 		}else{
-			Log.w(TAG, "sdcard is not present or not mounted");
-			alertUser("sdcard is not present or not mounted", null);
+			alertUser("sdcard is not present or not mounted", null);		
 		}
 	}
 
@@ -393,7 +391,7 @@ DialogInterface.OnClickListener {
 		button.setEnabled(true);
 		button = (Button) findViewById(R.id.restore_fonts);
 		try {
-			if(new File(getBackupFolder()).exists()){
+			if(backup()){
 				button.setEnabled(true);
 			}
 		} catch (Exception e) {
@@ -472,14 +470,8 @@ DialogInterface.OnClickListener {
 		}
 	}
 
-	public class SDCardMountIntentReceiver extends BroadcastReceiver {
-		private Installer installer;
-		public SDCardMountIntentReceiver(Installer installer){
-			this.installer = installer;
-		}
-		@Override
-		public void onReceive(Context arg0, Intent intent) {
-			installer.enableView();
-		}
+	public void onReceiveExternalStorageEvent(Intent intent) {
+		//check her if it is unmount or mount
+		
 	}
 }
