@@ -472,6 +472,7 @@ DialogInterface.OnClickListener {
 		}
 	}
 
+	//catches the MEDIA_MOUNT intent
 	public class SDCardMountIntentReceiver extends BroadcastReceiver {
 		private Installer installer;
 		public SDCardMountIntentReceiver(Installer installer){
