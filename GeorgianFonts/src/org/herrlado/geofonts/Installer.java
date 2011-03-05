@@ -89,27 +89,22 @@ DialogInterface.OnClickListener {
 		return getBackupFolder() + "/tmp";
 	}
 
-	private boolean restore() {
+	private boolean copyFonts(String sourceFolder){
 		StringBuilder sb = new StringBuilder();
 		String system = null;
-		File backUp = new File(getBackupFolder());
+
 		try{
 			ShellCommand sc = new ShellCommand();
 			system = getSystemPartion();
-
-			if(!backUp.isDirectory()){
-				Log.w(TAG, "backUp is not a directory");
-				return false;
-			}
 
 			String cc = "mount -o remount,rw " + system + " /system";
 			sb.append(cc).append("\n");
 
 			check(sc.su.runWaitFor(cc));
 
-			for(String font : MD5.keySet()){
-				String source = getBackupFolder() + "/" + font;
-				String dest = DESTINATION + "/" + font;
+			for(String key : MD5.keySet()){
+				String source = sourceFolder + "/" + key;
+				String dest = DESTINATION + "/" + key;
 				cc = "cat " + source + " > " + dest;
 				sb.append(cc).append("\n");
 				check(sc.su.runWaitFor(cc));
@@ -118,12 +113,11 @@ DialogInterface.OnClickListener {
 				sb.append(cc).append("\n");
 				check(sc.su.runWaitFor(cc));
 			}
-
-			cc = "rm -r " + getBackupFolder();
+			cc = "rm -r " + sourceFolder;
 			sb.append(cc).append("\n");
 			check(sc.su.runWaitFor(cc));
 
-			try {
+			try{
 				cc = "mount -o remount,ro " + system + " /system";
 				sb.append(cc).append("\n");
 				check(sc.su.runWaitFor(cc));
@@ -131,12 +125,20 @@ DialogInterface.OnClickListener {
 				Log.w(TAG, "Cannot mount /system ro :(", ex);
 				return false;
 			}
-
 		}catch (Exception e) {
 			Log.w(TAG, e.getMessage());
 			return false;
 		}
 		return true;
+	}
+
+	private boolean restore() {
+		File backUp = new File(getBackupFolder());
+		if(!backUp.isDirectory()){
+			Log.w(TAG, "backUp is not a directory");
+			return false;
+		}
+		return copyFonts(getBackupFolder());
 	}
 
 	private String getSystemPartion() {
@@ -241,62 +243,19 @@ DialogInterface.OnClickListener {
 	}
 
 	public boolean installFonts() {
-		StringBuilder sb = new StringBuilder();
-		String system = null;
-		try {
-			ShellCommand sc = new ShellCommand();
-
-			if (extractFonts() == false) {
-				Log.w(TAG, "Cannot extract Georgian fonts from apk!");
-				return false;
-			}
-
-			system = getSystemPartion();
-
-			if (system == null) {
-				Log.w(TAG,
-				"Cannot find out which partion is mounted on /system");
-				return false;
-			}
-
-			String cc = "mount -o remount,rw " + system + " /system";
-			sb.append(cc).append("\n");
-
-			check(sc.su.runWaitFor(cc));
-
-			String sourceFolder = getTmpFontFolder();
-			for (String key : MD5.keySet()) {
-				String source = sourceFolder + "/" + key;
-				String dest = DESTINATION + "/" + key;
-				cc = "cat " + source + " > " + dest;
-				sb.append(cc).append("\n");
-				check(sc.su.runWaitFor(cc));
-
-				cc = "chmod 644  " + dest;
-				sb.append(cc).append("\n");
-				check(sc.su.runWaitFor(cc));
-
-				cc = "rm " + source;
-				sb.append(cc).append("\n");
-				check(sc.su.runWaitFor(cc));
-			}
-			try {
-				cc = "mount -o remount,ro " + system + " /system";
-				sb.append(cc).append("\n");
-				check(sc.su.runWaitFor(cc));
-			} catch (Exception ex) {
-				Log.w(TAG, "Cannot mount /system ro :(", ex);
-			}
-
-		} catch (Exception ex) {
-			Log.w(TAG, "Cannot install Georgian fonts. Please check the logs", ex);
+		if (extractFonts() == false) {
+			Log.w(TAG, "Cannot extract Georgian fonts from apk!");
 			return false;
-		} finally {
-			String command = sb.toString();
-			Log.i(TAG, "run commands >>>>");
-			Log.i(TAG, command);
 		}
-		return true;
+
+		String system = getSystemPartion();
+
+		if (system == null) {
+			Log.w(TAG,
+			"Cannot find out which partion is mounted on /system");
+			return false;
+		}	
+		return copyFonts(getTmpFontFolder());
 	}
 
 	/** Called when the activity is first created. */
@@ -306,7 +265,7 @@ DialogInterface.OnClickListener {
 		setContentView(R.layout.georgian_installed);
 
 		IntentFilter filter = new IntentFilter(Intent.ACTION_MEDIA_MOUNTED);
-		filter.addAction(Intent.ACTION_MEDIA_UNMOUNTED);
+		filter.addAction(Intent.ACTION_MEDIA_EJECT);
 		filter.addDataScheme("file");
 		sDCardMountIntentReceiver  = new SDCardMountIntentReceiver(this);
 		registerReceiver(sDCardMountIntentReceiver, filter);
@@ -332,19 +291,20 @@ DialogInterface.OnClickListener {
 			return;
 		}
 		if(SDpresent()){
-			button = (Button) findViewById(R.id.install_fonts);
-			button.setVisibility(View.VISIBLE);
-			button.setEnabled(true);
-			button.setOnClickListener(this);
-
-			button = (Button) findViewById(R.id.restore_fonts);
-			button.setVisibility(View.VISIBLE);
-			if(new File(getBackupFolder()).exists()){
-				button.setEnabled(true);
-			}else{
-				button.setEnabled(false);
-			}
-			button.setOnClickListener(this);
+			enableView();
+			//			button = (Button) findViewById(R.id.install_fonts);
+			//			button.setVisibility(View.VISIBLE);
+			//			button.setEnabled(true);
+			//			button.setOnClickListener(this);
+			//
+			//			button = (Button) findViewById(R.id.restore_fonts);
+			//			button.setVisibility(View.VISIBLE);
+			//			if(new File(getBackupFolder()).exists()){
+			//				button.setEnabled(true);
+			//			}else{
+			//				button.setEnabled(false);
+			//			}
+			//			button.setOnClickListener(this);
 		}else{
 			Log.w(TAG, "sdcard is not present or not mounted");
 			alertUser("sdcard is not present or not mounted", null);
@@ -392,10 +352,12 @@ DialogInterface.OnClickListener {
 		button.setEnabled(true);
 		button = (Button) findViewById(R.id.install_fonts);
 		button.setEnabled(true);
+		button.setOnClickListener(this);
 		button = (Button) findViewById(R.id.restore_fonts);
 		try {
 			if(new File(getBackupFolder()).exists()){
 				button.setEnabled(true);
+				button.setOnClickListener(this);
 			}
 		} catch (Exception e) {
 			alertUser(e.getMessage(), null);
@@ -411,6 +373,7 @@ DialogInterface.OnClickListener {
 		button.setEnabled(false);
 		button = (Button) findViewById(R.id.restore_fonts);
 		button.setEnabled(false);
+
 		if(barView){
 			ProgressBar pb = (ProgressBar) findViewById(R.id.installing);
 			pb.setVisibility(View.VISIBLE);
@@ -485,7 +448,7 @@ DialogInterface.OnClickListener {
 		public void onReceive(Context arg0, Intent intent) {
 			if(intent.getAction().equals(Intent.ACTION_MEDIA_MOUNTED)){
 				installer.enableView();
-			}else if(intent.getAction().equals(Intent.ACTION_MEDIA_UNMOUNTED)){
+			}else if(intent.getAction().equals(Intent.ACTION_MEDIA_EJECT)){
 				installer.disableView(false);
 				alertUser("sdcard has been removed or unmounted", null);
 			}
