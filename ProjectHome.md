@@ -1,0 +1,3 @@
+ბატონმა **herrlado**-მ შემოგვთავაზა კიდევ ერთი "გამაქართულებელი" GeorgianFonts ამჯერად ანდროიდისთვის. აღარ დაგვჭირდება ცალკე ფონტების ძიება, ცალკე ფაილური მენეჯერების დაყენება და ა.შ. ვაყენებთ ზემოთ აღნიშნულ პროგრამას, ვუშვებთ მას და იგი თვითონ მიხედავს ყველაფერს. ოღონდ ტელეფონი უნდა იყოს აუცილებლად დარუთული. ჯერ-ჯერობით ყველა მოდელზე არ მუშაობს მემგონი, ჩემს Samsung i5700 (Spica)-ზე მაგალითად უპრობლემოდ გაართვა საქმეს თავი :)
+<br><br>
+<a href='http://img683.imageshack.us/i/screenshot1cz.png/'><img src='http://img683.imageshack.us/img683/5135/screenshot1cz.th.png' border='0' /></a>  <a href='http://img16.imageshack.us/i/screenshot2xt.png/'><img src='http://img16.imageshack.us/img16/6481/screenshot2xt.th.png' border='0' /></a>
